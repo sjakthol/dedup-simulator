@@ -31,7 +31,8 @@ parser.add_argument("--total-lines",
 args = parser.parse_args()
 nth = int(args.lines / args.samples)
 
-print("Taking %i samples from %i entries (every %ith)" % (args.samples, args.lines, nth), file=sys.stderr)
+print("Taking %i samples from %i entries (every %ith)" % (
+      args.samples, args.lines, nth), file=sys.stderr)
 i = 1
 last = None
 for line in fileinput.input("-"):
