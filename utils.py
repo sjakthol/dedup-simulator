@@ -20,7 +20,8 @@ def timeit(fn):
     def wrapper(*args, **kwargs):
         time = timer.Timer()
         rval = fn(*args, **kwargs)
-        print("--- %s(): %s." % (fn.__name__, time.elapsed_str), file=sys.stderr)
+        print("--- %s(): %s." % (fn.__name__, time.elapsed_str),
+              file=sys.stderr)
         return rval
 
     return wrapper
@@ -39,7 +40,7 @@ def profileit(func):
         try:
             # Only in 3.3
             profiler.print_stats(sort="cumtime")
-        except KeyError as e:
+        except KeyError:
             profiler.print_stats()
         return rval
 
@@ -102,6 +103,7 @@ def shuffle(in_list):
 
     # Yield the last element.
     yield in_list[0]
+
 
 def read_upload_stream():
     """Reads the precomputed upload request stream from stdin. The stream MUST
