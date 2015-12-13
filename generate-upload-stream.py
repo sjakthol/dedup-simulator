@@ -2,9 +2,6 @@
 
 import fileinput
 import hashlib
-import itertools
-import random
-import re
 import sys
 import timer
 import utils
@@ -68,13 +65,16 @@ def generate_uploads(uploads):
         try:
             encoded = upload.to_bytes(BYTES_PER_UPLOAD, byteorder='big')
         except OverflowError as e:
-            print("ERROR: size | hash does not fit into %i bytes" % BYTES_PER_UPLOAD, file=sys.stderr)
+            print("ERROR: size+hash does not fit into %i bytes" % (
+                BYTES_PER_UPLOAD), file=sys.stderr)
             raise e
 
         digest.update(encoded)
         sys.stdout.buffer.write(encoded)
 
-    print("Finished. SHA256 digest of the data: %s" % digest.hexdigest(), file=sys.stderr)
+    print("Finished. SHA256 digest of the data: %s" % digest.hexdigest(),
+          file=sys.stderr)
+
 
 @utils.timeit
 def main():
