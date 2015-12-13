@@ -8,30 +8,7 @@ import sys
 import timer
 import utils
 
-# 20 bytes for the SHA1 hash, 5 bytes for the file size.
-BYTES_PER_UPLOAD = 25
-
 DESCRIPTION = """A simulator for the deduplication protocol."""
-
-
-def read_upload_stream():
-    """Reads the precomputed upload request stream from stdin. The stream MUST
-       be generated with generate_upload_stream.py script.
-
-       Yields:
-          A (hash, size) tuple of each upload (int, int).
-    """
-    upload = sys.stdin.buffer.read(BYTES_PER_UPLOAD)
-    while upload:
-        data = int.from_bytes(upload, byteorder='big')
-        hsh = data & 0xffffffffffffffffffffffffffffffffffffffff
-        size = data >> 160
-
-        # Yield the hash, size pair
-        yield (hsh, size)
-
-        # Read the next upload
-        upload = sys.stdin.buffer.read(BYTES_PER_UPLOAD)
 
 
 @utils.timeit
@@ -54,7 +31,7 @@ def simulate(args):
     total_number_of_upload_requests = 0
 
     tmr = timer.Timer()
-    for (upload, size) in read_upload_stream():
+    for (upload, size) in utils.read_upload_stream():
         total_number_of_upload_requests += 1
 
         if total_number_of_upload_requests % utils.REPORT_FREQUENCY == 0:
