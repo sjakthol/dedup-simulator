@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
-import gzip
-import itertools
 import timer
 import sys
 import utils
-
 
 # A set of files already in the storage
 seen = set()
@@ -31,4 +28,5 @@ for (hsh, _) in utils.read_upload_stream():
         ), file=sys.stderr)
 
 dedup_percentage = 1 - files_in / total_uploads
-print("+++ Simulation complete. dedup_percentage=%f" % dedup_percentage, file=sys.stderr)
+print("+++ Simulation complete. dedup_percentage=%f" % dedup_percentage,
+      file=sys.stderr)
