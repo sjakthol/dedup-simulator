@@ -3,13 +3,13 @@
 
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
-import random
 import time
 
 try:
     timestamp = time.perf_counter
 except AttributeError as e:
     timestamp = time.clock
+
 
 def formatNumber(v):
     if v < 1000:
@@ -19,9 +19,9 @@ def formatNumber(v):
     else:
         return "%iM" % (v / 1000000)
 
+
 class SMOTE():
     """SMOTE: Oversampling the minority class."""
-
 
     def __init__(self, samples, N=10, k=5):
         self.n_samps, self.n_attrs = samples.shape
@@ -60,15 +60,17 @@ class SMOTE():
 
         # If N is less than 100%, randomize the monority class samples as
         # only a random percent of them will be SMOTEd.
-        self.n_synth = int( (self.N/100)*self.n_samps ) # Randomize minority class samples
+        self.n_synth = int((self.N/100)*self.n_samps)
 
+        # Randomize minority class samples
         rand_indexes = np.random.permutation(self.n_samps)
         if self.N > 100:
             self.N = int(np.ceil(self.N/100))
             for i in range(self.N-1):
-                rand_indexes = np.append(rand_indexes, np.random.permutation(self.n_samps))
+                values = np.random.permutation(self.n_samps)
+                rand_indexes = np.append(rand_indexes, values)
 
-        self.syntethic = np.zeros((self.n_synth, self.n_attrs));
+        self.syntethic = np.zeros((self.n_synth, self.n_attrs))
         self.newindex = 0
 
         print("Computing nearest neighbors")
@@ -80,11 +82,13 @@ class SMOTE():
         k = 0
         # for i in range (0, self.n_samps-1):
         for i in rand_indexes[:self.n_synth]:
-            nnarray = nearest_k.kneighbors(self.samples[i], return_distance=False)[0]
+            nnarray = nearest_k.kneighbors(self.samples[i],
+                                           return_distance=False)[0]
             self.__populate(i, nnarray)
             k += 1
             if k % 1000000 == 0:
-                print("[%is] %s samples created" % (timestamp() - s, formatNumber(k)))
+                print("[%is] %s samples created" % (timestamp() - s,
+                      formatNumber(k)))
 
         return self.syntethic
 
@@ -95,8 +99,7 @@ class SMOTE():
             nn = np.random.randint(0, self.k)
 
         dif = self.samples[nnarray[nn]] - self.samples[i]
-        gap = np.random.rand(1,self.n_attrs)
+        gap = np.random.rand(1, self.n_attrs)
 
         self.syntethic[self.newindex] = self.samples[i] + gap.flatten() * dif
         self.newindex += 1
-        return

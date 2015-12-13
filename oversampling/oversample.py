@@ -1,11 +1,11 @@
 import gzip
 import numpy as np
 from SMOTE import SMOTE
-import itertools
 import random
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 
 def formatNumber(v):
     if v < 1000:
@@ -36,7 +36,7 @@ print("np.array finished")
 
 N = 700
 k = 5
-smote = SMOTE(np_samples,N,k=k)
+smote = SMOTE(np_samples, N, k=k)
 synth = smote.over_sampling()
 print('# Synth Samps: ', synth.shape[0])
 
@@ -48,6 +48,8 @@ with gzip.open("niksula-file-data-synthetic-1.txt.gz", 'w') as fd:
 
         hashes.add(hsh)
 
-        fd.write(("%040x  %i  %i\n" % (hsh, int(sample[0]), int(sample[1]))).encode("UTF-8"))
+        copies = int(sample[0])
+        size = int(sample[1])
+        fd.write(("%040x  %i  %i\n" % (hsh, copies, size)).encode("UTF-8"))
         if i % 100000 == 0:
             print("%s samples outputted" % formatNumber(i))
