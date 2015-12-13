@@ -2,7 +2,6 @@
 
 import argparse
 import collections
-import itertools
 import operator
 import sys
 import timer
@@ -14,8 +13,8 @@ DESCRIPTION = """A simulator for the deduplication protocol."""
 @utils.timeit
 def simulate(args):
 
-    # A dict of short_hash -> [{ file, checks_available, copies }] for at most RLu
-    # most common files for the short hash.
+    # A dict of short_hash -> [{ file, checks_available, copies }] for at most
+    # RLu most common files for the short hash.
     # * file = hash of the file
     # * checks_available = number of checks the uploaders can make
     # * copies = the popularity of the file
@@ -27,17 +26,17 @@ def simulate(args):
     # that one.
     sh_uncommon_files = {}
 
-    number_of_files_in_the_storage = 0
-    total_number_of_upload_requests = 0
+    files_in_storage = 0
+    handled_upload_requests = 0
 
     tmr = timer.Timer()
     for (upload, size) in utils.read_upload_stream():
-        total_number_of_upload_requests += 1
+        handled_upload_requests += 1
 
-        if total_number_of_upload_requests % utils.REPORT_FREQUENCY == 0:
-            percentage = 1 - number_of_files_in_the_storage / total_number_of_upload_requests
+        if handled_upload_requests % utils.REPORT_FREQUENCY == 0:
+            percentage = 1 - files_in_storage / handled_upload_requests
             print("%s uploads, percentage %.4f, time %s, %s" % (
-                utils.num_fmt(total_number_of_upload_requests),
+                utils.num_fmt(handled_upload_requests),
                 percentage,
                 tmr.elapsed_str,
                 utils.get_mem_info()
@@ -93,19 +92,22 @@ def simulate(args):
 
         if not file_deduplicated:
             # The upload could not be deduplicated.
-            number_of_files_in_the_storage += 1
+            files_in_storage += 1
 
             # Add the file to the end of the list of uncommon files
             sh_uncommon_files[bucket_id].append(upload)
 
         # Remove files that have no more checkers available
-        new_most_common = filter(operator.itemgetter("checks_available"), most_common)
+        new_most_common = filter(operator.itemgetter("checks_available"),
+                                 most_common)
 
         if needs_most_common_sort:
             # Sort the most common files by popularity. Since all new files
             # that might be added to the list have only one copy this can be
             # done here, before those are appended to the list.
-            new_most_common = sorted(new_most_common, key=operator.itemgetter("copies"), reverse=True)
+            new_most_common = sorted(new_most_common,
+                                     key=operator.itemgetter("copies"),
+                                     reverse=True)
         else:
             new_most_common = list(new_most_common)
 
@@ -124,7 +126,11 @@ def simulate(args):
                 # file was not deduplicated earlier the server only knows a
                 # single user who has uploaded this file. Thus it has one
                 # copy and checks of that user available.
-                new_most_common.append({ "file": new_file, "checks_available": args.rlc, "copies": 1 })
+                new_most_common.append({
+                    "file": new_file,
+                    "checks_available": args.rlc,
+                    "copies": 1})
+
                 new_files_needed -= 1
 
         assert len(new_most_common) <= args.rlu
@@ -133,10 +139,11 @@ def simulate(args):
         sh_most_common_files[bucket_id] = new_most_common
 
         # Print the number to files to the output file
-        print(number_of_files_in_the_storage)
+        print(files_in_storage)
 
-    dedup_percentage = 1 - number_of_files_in_the_storage / total_number_of_upload_requests
-    print("+++ Simulation complete. dedup_percentage=%f" % dedup_percentage, file=sys.stderr)
+    dedup_percentage = 1 - files_in_storage / handled_upload_requests
+    print("+++ Simulation complete. dedup_percentage=%f" % dedup_percentage,
+          file=sys.stderr)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=DESCRIPTION)
@@ -151,7 +158,8 @@ if __name__ == "__main__":
                         action="store",
                         default=30,
                         type=int,
-                        help="The number of files that are considered when uploading a new file (RL_u).")
+                        help="The number of files that are considered when " +
+                             "uploading a new file (RL_u).")
     parser.add_argument("--full-hash-output-bit-length",
                         dest="hashlen",
                         action="store",
@@ -163,7 +171,9 @@ if __name__ == "__main__":
                         action="store",
                         default=70,
                         type=int,
-                        help="The number of times an uploader can perform a check for a file (RL_c).")
+                        help="The number of times an uploader can perform a " +
+                             "check for a file (RL_c).")
     parser.add_argument("--with-sizes", action="store_true",
-                        help="Use size information of the files in the protocol.")
+                        help="Use size information of the files in the " +
+                        "protocol.")
     simulate(parser.parse_args())
