@@ -26,51 +26,55 @@ Here:
 data = {}
 
 if len(sys.argv) < 2:
-  print "Usage: %s directory" % sys.argv[0]
-  sys.exit(1)
+    print "Usage: %s directory" % sys.argv[0]
+    sys.exit(1)
 
-directory = sys.argv[1];
+directory = sys.argv[1]
 
 if not os.path.isdir(directory):
-   print "%s is not a directory." % directory
-   sys.exit(1)
+    print "%s is not a directory." % directory
+    sys.exit(1)
+
 
 def fhash(f):
-  hasher = hashlib.sha1()
-  try:
-    with open(f, "rb") as fd:
-      for chunk in iter(lambda: fd.read(2048), ''):
-        hasher.update(chunk)
-  except IOError as e:
-    return None
+    hasher = hashlib.sha1()
+    try:
+        with open(f, "rb") as fd:
+            for chunk in iter(lambda: fd.read(2048), ''):
+                hasher.update(chunk)
+    except IOError:
+        return None
 
-  return hasher.hexdigest()
+    return hasher.hexdigest()
 
 for root, dirs, files in os.walk(directory):
-  if root.startswith("/proc")  or root.startswith("/sys") or root.startswith("/dev"):
-    continue
-
-  for f in files:
-    path = os.path.join(root, f)
-    try:
-        st = os.stat(path)
-    except OSError:
-        continue
-    if not stat.S_ISREG(st.st_mode):
+    if root.startswith("/proc") or root.startswith("/sys"):
         continue
 
-    sha1 = fhash(path)
-    if sha1 is None:
+    if root.startswith("/dev"):
         continue
 
-    size = st.st_size
-    identifier = "%s|%i" % (sha1, size)
+    for f in files:
+        path = os.path.join(root, f)
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        if not stat.S_ISREG(st.st_mode):
+            continue
 
-    if identifier in data:
-      data[identifier] += 1
-    else:
-      data[identifier] = 1
+        sha1 = fhash(path)
+        if sha1 is None:
+            continue
+
+        size = st.st_size
+        identifier = "%s|%i" % (sha1, size)
+
+        if identifier in data:
+            data[identifier] += 1
+        else:
+            data[identifier] = 1
 
 for identifier, count in data.iteritems():
-  sha1, size = identifier.split("|")
-  print "%s  %s  %s" % (sha1, count, size)
+    sha1, size = identifier.split("|")
+    print "%s  %s  %s" % (sha1, count, size)
