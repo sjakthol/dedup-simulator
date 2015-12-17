@@ -25,7 +25,8 @@ information for the simulations (needs to be done once)
 
 All together:
 ```shell
-python scripts/file_counts.py | python3 simulator/upload-request-stream.py |
+python scripts/file_counts.py | \
+python3 simulator/upload-request-stream.py | \
 python3 simulator/simulator.py > results.csv
 ```
 
@@ -104,8 +105,8 @@ The output lines will be prepended with the line number and a comma.
 #### Example: Print 10,000 lines from 110,231,310 total lines
 Here the file `data` contains 110,231,310 lines:
 ```shell
-cat data | python3 scripts/sampler.py --samples 10000 --total-lines 110231310 >
-samples
+cat data | python3 scripts/sampler.py --samples 10000 --total-lines 110231310 \
+> samples
 ```
 
 The `samples` file contains following data:
