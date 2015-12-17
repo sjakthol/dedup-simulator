@@ -1,9 +1,20 @@
 A simulator and related scripts for measuring efficiency of an encrypted data
 deduplication solution.
 
+* [Links](#)
+* [Usage](#)
+  * [Collecting a dataset](#)
+  * [Generate an upload request stream](#)
+  * [Perform the simulation](#)
+* [Scripts](#)
+  * [Sampler](#)
+  * [Short hash and size listing](#)
+
 ## Links
 * Paper: https://eprint.iacr.org/2015/455.pdf
 * Demo Implementation: https://git.ssg.aalto.fi/close/cloud-dedup
+
+
 
 ## Usage
 
