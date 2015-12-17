@@ -3,7 +3,7 @@ deduplication solution.
 
 * [Links](#links)
 * [Usage](#usage)
-  * [Collecting a dataset](#collecting-a-datasest)
+  * [Collecting a dataset](#collecting-a-dataset)
   * [Generate an upload request stream](#generate-an-upload-request-stream)
   * [Perform the simulation](#perform-the-simulation)
 * [Scripts](#scripts)
@@ -13,8 +13,6 @@ deduplication solution.
 ## Links
 * Paper: https://eprint.iacr.org/2015/455.pdf
 * Demo Implementation: https://git.ssg.aalto.fi/close/cloud-dedup
-
-
 
 ## Usage
 
