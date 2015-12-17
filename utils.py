@@ -5,6 +5,8 @@ import resource
 import timer
 import sys
 
+# The number of iterations to wait between progress reports during long lasting
+# computation.
 REPORT_FREQUENCY = 500000
 
 # 20 bytes for the SHA1 hash, 5 bytes for the file size.
