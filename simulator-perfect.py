@@ -32,9 +32,10 @@ def simulate():
         print("%i,%i" % (data_in, total_in))
 
     dedup_percentage = 1 - data_in / total_in
-    print("Simulation complete. stored=%s, uploaded=%s, dedup_percentage=%f" % (
-        utils.sizeof_fmt(data_in), utils.sizeof_fmt(total_in), dedup_percentage),
-        file=sys.stderr)
+    print("+++ Done. stored=%s, uploaded=%s, dedup_percentage=%f" % (
+        utils.sizeof_fmt(data_in),
+        utils.sizeof_fmt(total_in),
+        dedup_percentage), file=sys.stderr)
 
 if __name__ == "__main__":
     simulate()
