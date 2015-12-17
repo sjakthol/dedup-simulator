@@ -159,29 +159,17 @@ def simulate(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument("--short-hash-length",
-                        dest="shlen",
-                        action="store",
-                        default=13,
-                        type=int,
+                        dest="shlen", action="store", default=13, type=int,
                         help="The length of short hash in bits.")
     parser.add_argument("--pake-runs",
-                        dest="rlu",
-                        action="store",
-                        default=30,
-                        type=int,
+                        dest="rlu", action="store", default=30, type=int,
                         help="The number of files that are considered when " +
                              "uploading a new file (RL_u).")
     parser.add_argument("--hash-length",
-                        dest="hashlen",
-                        action="store",
-                        default=160,
-                        type=int,
+                        dest="hashlen", action="store", default=160, type=int,
                         help="The length of the dataset hashes in bits.")
     parser.add_argument("--check-limit",
-                        dest="rlc",
-                        action="store",
-                        default=70,
-                        type=int,
+                        dest="rlc", action="store", default=70, type=int,
                         help="The number of times an uploader can perform a " +
                              "check for a file (RL_c).")
     parser.add_argument("--max-threshold",
