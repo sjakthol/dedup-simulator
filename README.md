@@ -1,14 +1,14 @@
 A simulator and related scripts for measuring efficiency of an encrypted data
 deduplication solution.
 
-* [Links](#)
-* [Usage](#)
-  * [Collecting a dataset](#)
-  * [Generate an upload request stream](#)
-  * [Perform the simulation](#)
-* [Scripts](#)
-  * [Sampler](#)
-  * [Short hash and size listing](#)
+* [Links](#links)
+* [Usage](#usage)
+  * [Collecting a dataset](#collecting-a-datasest)
+  * [Generate an upload request stream](#generate-an-upload-request-stream)
+  * [Perform the simulation](#perform-the-simulation)
+* [Scripts](#scripts)
+  * [Sampler](#sampler)
+  * [Short hash and size listing](#short-hash-and-size-listing)
 
 ## Links
 * Paper: https://eprint.iacr.org/2015/455.pdf
