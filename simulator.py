@@ -3,6 +3,7 @@
 import argparse
 import collections
 import operator
+import random
 import sys
 import timer
 import utils
@@ -73,16 +74,24 @@ def simulate(args):
             # deduplicated as a different file, the second match is just
             # ignored
             if data["file"] == upload and not file_deduplicated:
-                # Deduplication \o/
-                file_deduplicated = True
+                if data["threshold"] < data["copies"]:
+                    # This was a match but the threshold has not been met. The
+                    # uploader receives a random key and uploads a new file to
+                    # the server. However, since we know that the file about to
+                    # be uploaded is a copy of this file, we increase the count
+                    # for that file
+                    data["copies"] += 1
+                else:
+                    # Deduplication \o/
+                    file_deduplicated = True
 
-                # This "uploader" will perform RL_c checks for this file.
-                data["checks_available"] += args.rlc
+                    # This "uploader" will perform RL_c checks for this file.
+                    data["checks_available"] += args.rlc
 
-                # The popularity of this file went up by 1
-                data["copies"] += 1
+                    # The popularity of this file went up by 1
+                    data["copies"] += 1
 
-                needs_most_common_sort = True
+                    needs_most_common_sort = True
 
             # A check was performed against this file.
             data["checks_available"] -= 1
@@ -129,7 +138,8 @@ def simulate(args):
                 new_most_common.append({
                     "file": new_file,
                     "checks_available": args.rlc,
-                    "copies": 1})
+                    "copies": 1,
+                    "threshold": random.randint(2, args.max_threshold)})
 
                 new_files_needed -= 1
 
@@ -154,26 +164,29 @@ if __name__ == "__main__":
                         default=13,
                         type=int,
                         help="The length of short hash in bits.")
-    parser.add_argument("--upload-rate-limit",
+    parser.add_argument("--pake-runs",
                         dest="rlu",
                         action="store",
                         default=30,
                         type=int,
                         help="The number of files that are considered when " +
                              "uploading a new file (RL_u).")
-    parser.add_argument("--full-hash-output-bit-length",
+    parser.add_argument("--hash-length",
                         dest="hashlen",
                         action="store",
                         default=160,
                         type=int,
                         help="The length of the dataset hashes in bits.")
-    parser.add_argument("--checker-rate-limit",
+    parser.add_argument("--check-limit",
                         dest="rlc",
                         action="store",
                         default=70,
                         type=int,
                         help="The number of times an uploader can perform a " +
                              "check for a file (RL_c).")
+    parser.add_argument("--max-threshold",
+                        action="store", default=20, type=int,
+                        help="The maximum value for the random threshold")
     parser.add_argument("--with-sizes", action="store_true",
                         help="Use size information of the files in the " +
                         "protocol.")
