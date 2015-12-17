@@ -26,17 +26,17 @@ def simulate(args):
     # that one.
     sh_uncommon_files = {}
 
-    files_in_storage = 0
-    handled_upload_requests = 0
+    data_in_storage = 0
+    data_uploaded = 0
 
     tmr = timer.Timer()
-    for (upload, size) in utils.read_upload_stream():
-        handled_upload_requests += 1
+    for (i, (upload, size)) in enumerate(utils.read_upload_stream()):
+        data_uploaded += size
 
-        if handled_upload_requests % utils.REPORT_FREQUENCY == 0:
-            percentage = 1 - files_in_storage / handled_upload_requests
+        if (i + 1) % utils.REPORT_FREQUENCY == 0:
+            percentage = 1 - data_in_storage / data_uploaded
             print("%s uploads, percentage %.4f, time %s, %s" % (
-                utils.num_fmt(handled_upload_requests),
+                utils.num_fmt(i),
                 percentage,
                 tmr.elapsed_str,
                 utils.get_mem_info()
@@ -92,7 +92,7 @@ def simulate(args):
 
         if not file_deduplicated:
             # The upload could not be deduplicated.
-            files_in_storage += 1
+            data_in_storage += size
 
             # Add the file to the end of the list of uncommon files
             sh_uncommon_files[bucket_id].append(upload)
@@ -139,11 +139,12 @@ def simulate(args):
         sh_most_common_files[bucket_id] = new_most_common
 
         # Print the number to files to the output file
-        print(files_in_storage)
+        print("%i,%i" % (data_in_storage, data_uploaded))
 
-    dedup_percentage = 1 - files_in_storage / handled_upload_requests
-    print("+++ Simulation complete. dedup_percentage=%f" % dedup_percentage,
-          file=sys.stderr)
+    dedup_percentage = 1 - data_in_storage / data_uploaded
+    print("+++ Done. stored=%s, uploaded=%s, dedup_percentage=%f" % (
+        utils.sizeof_fmt(data_in_storage), utils.sizeof_fmt(data_uploaded),
+        dedup_percentage), file=sys.stderr)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=DESCRIPTION)
