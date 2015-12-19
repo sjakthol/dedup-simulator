@@ -28,121 +28,141 @@ DESC = ("Generates an upload request stream for the simulator to consume. The "
         "('<sha1 hash>  <copies>  <size>')")
 
 
-@utils.timeit
-def read_input(args):
-    """Reads the input data from provided source
+class UploadStreamGenerator:
 
-    Args:
-        args: The command line arguments that contain input variable. The data
-          will be read from this file.
+    def __init__(self, args):
+        self.args = args
+        self.digest = hashlib.sha256()
+        self.nuploads = 0
 
-    Returns:
-        A iterator of file tupes of form (hash, count, size).
+    def generate(self):
+        self.files = self.read_input()
 
-    Raises:
-        Exception if the data can't be read from the input.
-    """
+        self.generate_uploads()
+        print("Generated %i uploads" % self.nuploads, file=sys.stderr)
 
-    print("Reading data from %s" % args.input, file=sys.stderr)
+    def get_pdf(self, hsh):
+        """A function that creates a function that gives the probability
+        distribution for file over time.
 
-    def convert(tokens):
-        """A helper that converts tokens on a line to integers."""
-        return (int(tokens[0], 16), int(tokens[1]), int(tokens[2]))
+        If the probability for a file is P(t) = x, then the file will be
+        uploaded |x * copies| times during time t.
 
-    with fileinput.input(args.input) as inpt:
-        # The data needs to be collected in the with block or the file will be
-        # closed before the lines are read
-        lines = list(inpt)
+        Args:
+            hsh: The hash of the file
 
-        # Inner map tokenizes the lines, the outer converts the values to
-        # integer triples
-        return map(convert,
-                   map(lambda line: line.split("  "), lines))
+        Return:
+            A function that takes one integer argument (time tick |t|) and
+            returns the probability of the file being uploaded at the tick |t|.
+        """
 
+        raise NotImplementedError("Implement get_pdf()!")
 
-def print_uploads(uploads):
-    """A method that prints uploads to stdout.
+    @utils.timeit
+    def read_input(self):
+        """Reads the input data from source given in arguments."""
 
-    Args:
-        uploads: An iterator that yields (sha1 hash, size) pairs
-    """
+        print("Reading data from %s" % self.args.input, file=sys.stderr)
 
-    # A hash that can be used to verify the result
-    digest = hashlib.sha256()
-    tmr = timer.Timer()
-    for i, (hsh, size) in enumerate(uploads):
-        if i and i % utils.REPORT_FREQUENCY == 0:
-            print("%s uploads outputted, time %s, mem=[%s]" % (
-                utils.num_fmt(i),
-                tmr.elapsed_str,
+        def convert(tokens):
+            """A helper that converts tokens on a line to integers and creates
+            a probability distribution over time for this file."""
+            hsh = int(tokens[0], 16)
+            return (
+                hsh,
+                int(tokens[1]),
+                int(tokens[2]),
+                self.get_pdf(hsh)
+            )
+
+        with fileinput.input(self.args.input) as lines:
+            # Tokenize the lines on two spaces
+            tokenised = map(lambda line: line.split("  "), lines)
+
+            # Parse the tokenized data
+            data = map(convert, tokenised)
+
+            # Collect the data to a list since he file is closed when we leave
+            # this with block
+            return utils.collect(data)
+
+    def generate_uploads(self):
+        """Generates the upload request stream."""
+        # The time tick t
+        t = 0
+
+        def generate_uploads_at_t(file_data):
+            """Generates the uploads for given file at moment time = t"""
+            hsh, total_copies, size, pdf = file_data
+            copies = round(pdf(t) * total_copies)
+
+            return itertools.repeat((hsh, size), copies)
+
+        while 1:
+            print("Generating uploads for t=%i" % t, file=sys.stderr)
+            uploads = itertools.chain.from_iterable(map(generate_uploads_at_t, self.files))
+
+            if not self.output_uploads_for_tick(uploads):
+                break
+
+            print("Uploads=%s, mem=[%s]" % (
+                utils.num_fmt(self.nuploads),
                 utils.get_mem_info()), file=sys.stderr)
-            tmr.reset()
 
-        try:
-            # The uploads are packed into 25 bytes: 20 bytes for the hash and
-            # 5 bytes for the file
-            upload = hsh | size << 160
-            encoded = upload.to_bytes(utils.BYTES_PER_UPLOAD, byteorder="big")
-        except OverflowError:
-            print("ERROR: hash | size << 160 did not fit into %i bytes" % (
-                utils.BYTES_PER_UPLOAD), file=sys.stderr)
-            raise
+            t += 1
 
-        digest.update(encoded)
-        sys.stdout.buffer.write(encoded)
+    def output_uploads_for_tick(self, uploads):
+        """Outputs the uploads for given time tick.
 
-    print("Finished. SHA256 digest of the data: %s" % digest.hexdigest(),
-          file=sys.stderr)
+        Args:
+            uploads: An iterator that yields (sha1 hash, size) pairs
+
+        Returns:
+            True if at least one upload was outputted, false otherwise.
+        """
+
+        uploads = utils.collect(uploads)
+        if not uploads:
+            return False
+
+        uploads = utils.shuffle(uploads)
+
+        tmr = timer.Timer()
+        for hsh, size in uploads:
+            if self.nuploads and self.nuploads % utils.REPORT_FREQUENCY == 0:
+                print("%s uploads outputted, time %s, mem=[%s]" % (
+                    utils.num_fmt(self.nuploads),
+                    tmr.elapsed_str,
+                    utils.get_mem_info()), file=sys.stderr)
+                tmr.reset()
+
+            try:
+                # The uploads are packed into 25 bytes: 20 bytes for the hash and
+                # 5 bytes for the file
+                upload = hsh | size << 160
+                encoded = upload.to_bytes(utils.BYTES_PER_UPLOAD,
+                                          byteorder="big")
+            except OverflowError:
+                print("ERROR: hash | size << 160 did not fit into %i bytes" % (
+                    utils.BYTES_PER_UPLOAD), file=sys.stderr)
+                raise
+
+            self.nuploads += 1
+            self.digest.update(encoded)
+            sys.stdout.buffer.write(encoded)
+
+        return True
 
 
-@utils.timeit
-def collect(iter):
-    """Collects values from iterator to list with progress reporting.
+class UniformStreamGenerator(UploadStreamGenerator):
+    def __init__(self, args):
+        super().__init__(args)
 
-    Args:
-        iter: The iterator to convert to list
+    def pdf(self, t):
+        return 1 if not t else 0
 
-    Returns:
-        A List that contains the values from the iterable
-    """
-
-    lst = []
-    tmr = timer.Timer()
-    for i, value in enumerate(iter):
-        if i and i % utils.REPORT_FREQUENCY == 0:
-            print("%i items collected, time=%s, mem=[%s]" % (
-                i, tmr.elapsed_str, utils.get_mem_info(lst)), file=sys.stderr)
-            tmr.reset()
-
-        lst.append(value)
-
-    return lst
-
-
-@utils.timeit
-def generate_uniform_uploads(files, args):
-    """Generates an upload request stream distributing the files uniformly.
-
-    The uploads are printed to stdout.
-
-    Args:
-        files: Result of read_input()
-        args: The command line arguments
-    """
-
-    print("Generating uploads with uniform distribution", file=sys.stderr)
-
-    # Repeat each file based on their popularity
-    stream = map(lambda f: itertools.repeat((f[0], f[2]), f[1]), files)
-
-    # Flatten the nested iterators
-    flat_stream = collect(itertools.chain.from_iterable(stream))
-
-    # shuffle the uploads
-    shuffled_stream = utils.shuffle(flat_stream)
-
-    # Print them out
-    print_uploads(shuffled_stream)
+    def get_pdf(self, hsh):
+        return self.pdf
 
 
 @utils.timeit
@@ -154,19 +174,16 @@ def main():
                              "from. Each line in the source must have form " +
                              "'<sha1 hash>  <copies>  <size>'. Defaults to " +
                              "stdin '-'")
-    parser.add_argument("--time-ticks",
-                        action="store", default=100, type=int,
-                        help="The number of time values in the simulation " +
-                             "(ticks are integers 0, ..., --time-ticks.")
     parser.add_argument("--distribution",
                         action="store", choices=["uniform"], default="uniform",
                         help="The type of distribution the popularities " +
                              "follow wrt. to time")
     args = parser.parse_args()
-    files = read_input(args)
 
     if args.distribution == "uniform":
-        generate_uniform_uploads(files, args)
+        g = UniformStreamGenerator(args)
+
+    g.generate()
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ import sys
 
 # The number of iterations to wait between progress reports during long lasting
 # computation.
-REPORT_FREQUENCY = 500000
+REPORT_FREQUENCY = 100000
 
 # 20 bytes for the SHA1 hash, 5 bytes for the file size.
 BYTES_PER_UPLOAD = 25
@@ -139,3 +139,27 @@ def read_upload_stream():
 
         # Read the next upload
         upload = sys.stdin.buffer.read(BYTES_PER_UPLOAD)
+
+
+def collect(iterable):
+    """Collects values from iterator to list with progress reporting.
+
+    Args:
+        iterable: The iterator to convert to list.
+
+    Returns:
+        A List that contains the values from the iterable.
+    """
+
+    print("Collecting items from %s" % iterable, file=sys.stderr)
+    lst = []
+    tmr = timer.Timer()
+    for i, value in enumerate(iterable):
+        if i and i % REPORT_FREQUENCY == 0:
+            print("%i items collected, time=%s, mem=[%s]" % (
+                i, tmr.elapsed_str, get_mem_info(lst)), file=sys.stderr)
+            tmr.reset()
+
+        lst.append(value)
+
+    return lst
