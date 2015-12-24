@@ -151,7 +151,6 @@ def collect(iterable):
         A List that contains the values from the iterable.
     """
 
-    print("Collecting items from %s" % iterable, file=sys.stderr)
     lst = []
     tmr = timer.Timer()
     for i, value in enumerate(iterable):

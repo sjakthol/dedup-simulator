@@ -112,17 +112,22 @@ class UploadStreamGenerator:
 
             return itertools.repeat((hsh, size), copies)
 
-        while 1:
-            print("Generating uploads for t=%i" % t, file=sys.stderr)
+        no_change_iterations = 0
+        while no_change_iterations < 20:
+            print("t=%i, no_changes_since=%s, mem=[%s]" % (
+                t, no_change_iterations, utils.get_mem_info()
+            ), file=sys.stderr)
             iterables = map(generate_uploads_at_t, self.files)
             uploads = itertools.chain.from_iterable(iterables)
 
-            if not self.output_uploads_for_tick(uploads):
-                break
-
-            print("Uploads=%s, mem=[%s]" % (
-                utils.num_fmt(self.nuploads),
-                utils.get_mem_info()), file=sys.stderr)
+            if self.output_uploads_for_tick(uploads):
+                no_change_iterations = 0
+                print("Uploads=%s, mem=[%s]" % (
+                    utils.num_fmt(self.nuploads),
+                    utils.get_mem_info()
+                ), file=sys.stderr)
+            else:
+                no_change_iterations += 1
 
             t += 1
 
