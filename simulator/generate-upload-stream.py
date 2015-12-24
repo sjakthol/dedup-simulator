@@ -16,6 +16,7 @@
 
 import argparse
 import fileinput
+import functools
 import hashlib
 import itertools
 import sys
@@ -37,6 +38,11 @@ class UploadStreamGenerator:
 
     def generate(self):
         self.files = self.read_input()
+        self.total_uploads = self.count_uploads()
+
+        print("Geneating a sequence of %i uploads (%i unique files)" % (
+            self.total_uploads, len(self.files)
+        ), file=sys.stderr)
 
         self.generate_uploads()
         print("Generated %i uploads" % self.nuploads, file=sys.stderr)
@@ -85,6 +91,14 @@ class UploadStreamGenerator:
             # Collect the data to a list since he file is closed when we leave
             # this with block
             return utils.collect(data)
+
+    def count_uploads(self):
+        """Counts the total number of uploads the read dataset contains.
+
+        Returns:
+            The number of uploads.
+        """
+        return functools.reduce(lambda c, f: c + f[1], self.files, 0)
 
     def generate_uploads(self):
         """Generates the upload request stream."""
