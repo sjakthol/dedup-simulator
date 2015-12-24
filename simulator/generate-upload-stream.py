@@ -100,7 +100,8 @@ class UploadStreamGenerator:
 
         while 1:
             print("Generating uploads for t=%i" % t, file=sys.stderr)
-            uploads = itertools.chain.from_iterable(map(generate_uploads_at_t, self.files))
+            iterables = map(generate_uploads_at_t, self.files)
+            uploads = itertools.chain.from_iterable(iterables)
 
             if not self.output_uploads_for_tick(uploads):
                 break
@@ -137,8 +138,8 @@ class UploadStreamGenerator:
                 tmr.reset()
 
             try:
-                # The uploads are packed into 25 bytes: 20 bytes for the hash and
-                # 5 bytes for the file
+                # The uploads are packed into 25 bytes: 20 bytes for the hash
+                # and 5 bytes for the file
                 upload = hsh | size << 160
                 encoded = upload.to_bytes(utils.BYTES_PER_UPLOAD,
                                           byteorder="big")
