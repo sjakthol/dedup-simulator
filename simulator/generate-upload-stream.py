@@ -19,6 +19,9 @@ import fileinput
 import functools
 import hashlib
 import itertools
+import math
+import random
+import scipy.stats
 import sys
 import timer
 import utils
@@ -47,15 +50,12 @@ class UploadStreamGenerator:
         self.generate_uploads()
         print("Generated %i uploads" % self.nuploads, file=sys.stderr)
 
-    def get_pdf(self, hsh):
+    def get_pdf(self):
         """A function that creates a function that gives the probability
         distribution for file over time.
 
         If the probability for a file is P(t) = x, then the file will be
         uploaded |x * copies| times during time t.
-
-        Args:
-            hsh: The hash of the file
 
         Return:
             A function that takes one integer argument (time tick |t|) and
@@ -78,7 +78,7 @@ class UploadStreamGenerator:
                 hsh,
                 int(tokens[1]),
                 int(tokens[2]),
-                self.get_pdf(hsh)
+                self.get_pdf()
             )
 
         with fileinput.input(self.args.input) as lines:
@@ -108,7 +108,7 @@ class UploadStreamGenerator:
         def generate_uploads_at_t(file_data):
             """Generates the uploads for given file at moment time = t"""
             hsh, total_copies, size, pdf = file_data
-            copies = round(pdf(t) * total_copies)
+            copies = int(round(pdf(t) * total_copies))
 
             return itertools.repeat((hsh, size), copies)
 
@@ -181,8 +181,24 @@ class UniformStreamGenerator(UploadStreamGenerator):
     def pdf(self, t):
         return 1 if not t else 0
 
-    def get_pdf(self, hsh):
+    def get_pdf(self):
         return self.pdf
+
+
+class NormalStreamGenerator(UploadStreamGenerator):
+    sqrt2pi = math.sqrt(2 * math.pi)
+
+    def __init__(self, args):
+        super().__init__(args)
+
+    def pdf(self, mu, sigma, t):
+        return 1 / (sigma * self.sqrt2pi) * math.exp(-(t - mu) * (t - mu) / (2 * sigma * sigma))
+
+    def get_pdf(self):
+        mu = random.randint(1, 20000)
+        sigma = random.randint(20, 200)
+
+        return functools.partial(self.pdf, mu, sigma)
 
 
 @utils.timeit
@@ -195,13 +211,16 @@ def main():
                              "'<sha1 hash>  <copies>  <size>'. Defaults to " +
                              "stdin '-'")
     parser.add_argument("--distribution",
-                        action="store", choices=["uniform"], default="uniform",
+                        action="store", choices=["uniform", "normal"],
+                        default="uniform",
                         help="The type of distribution the popularities " +
                              "follow wrt. to time")
     args = parser.parse_args()
 
     if args.distribution == "uniform":
         g = UniformStreamGenerator(args)
+    elif args.distribution == "normal":
+        g = NormalStreamGenerator(args)
 
     g.generate()
 
