@@ -1,4 +1,2 @@
-line-profiler==1.0
-numpy==1.10.2
 reservoir-sampling-cli==0.1
-scipy==0.16.1
+tqdm==3.4.0
