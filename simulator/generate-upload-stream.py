@@ -15,13 +15,13 @@
 # limitations under the License.
 
 import argparse
+import collections
 import fileinput
 import functools
 import hashlib
 import itertools
 import math
 import random
-import scipy.stats
 import sys
 import timer
 import utils
@@ -74,11 +74,13 @@ class UploadStreamGenerator:
             """A helper that converts tokens on a line to integers and creates
             a probability distribution over time for this file."""
             hsh = int(tokens[0], 16)
+            count = int(tokens[1])
             return (
                 hsh,
-                int(tokens[1]),
+                count,
                 int(tokens[2]),
-                self.get_pdf()
+                self.get_pdf(),
+                count
             )
 
         with fileinput.input(self.args.input) as lines:
@@ -105,30 +107,45 @@ class UploadStreamGenerator:
         # The time tick t
         t = 0
 
-        def generate_uploads_at_t(file_data):
-            """Generates the uploads for given file at moment time = t"""
-            hsh, total_copies, size, pdf = file_data
-            copies = int(round(pdf(t) * total_copies))
+        tmr = timer.Timer()
+        files = self.files
+        while self.nuploads < self.total_uploads:
+            # Files that still have uploads left for the next iteration
+            next_files = []
 
-            return itertools.repeat((hsh, size), copies)
+            # The uploads triggered during this iteration
+            uploads = []
 
-        no_change_iterations = 0
-        while no_change_iterations < 20:
-            print("t=%i, no_changes_since=%s, mem=[%s]" % (
-                t, no_change_iterations, utils.get_mem_info()
+            for hsh, total_copies, size, pdf, left in files:
+                copies = int(math.ceil(pdf(t) * total_copies))
+                copies = min(copies, left)
+
+                # Append the uploads for this round
+                uploads.append(itertools.repeat((hsh, size), copies))
+                left -= copies
+
+                # If there's still uploads left for the next rounds, add the
+                # file back to the list
+                if left > 0:
+                    next_files.append((hsh, total_copies, size, pdf, left))
+
+            # Dump the uploads for this tick
+            all_ups = itertools.chain.from_iterable(uploads)
+            self.output_uploads_for_tick(all_ups)
+
+            print("t=%i, ups=%s, left=%i, time=%s, mem=[%s]" % (
+                t,
+                utils.num_fmt(self.nuploads),
+                len(next_files),
+                tmr.elapsed_str,
+                utils.get_mem_info()
             ), file=sys.stderr)
-            iterables = map(generate_uploads_at_t, self.files)
-            uploads = itertools.chain.from_iterable(iterables)
+            tmr.reset()
 
-            if self.output_uploads_for_tick(uploads):
-                no_change_iterations = 0
-                print("Uploads=%s, mem=[%s]" % (
-                    utils.num_fmt(self.nuploads),
-                    utils.get_mem_info()
-                ), file=sys.stderr)
-            else:
-                no_change_iterations += 1
+            if not files:
+                break
 
+            files = next_files
             t += 1
 
     def output_uploads_for_tick(self, uploads):
@@ -192,10 +209,11 @@ class NormalStreamGenerator(UploadStreamGenerator):
         super().__init__(args)
 
     def pdf(self, mu, sigma, t):
-        return 1 / (sigma * self.sqrt2pi) * math.exp(-(t - mu) * (t - mu) / (2 * sigma * sigma))
+        return 1 / (sigma * self.sqrt2pi) * \
+            math.exp(-(t - mu) * (t - mu) / (2 * sigma * sigma))
 
     def get_pdf(self):
-        mu = random.randint(1, 20000)
+        mu = random.randint(1, 2000)
         sigma = random.randint(20, 200)
 
         return functools.partial(self.pdf, mu, sigma)
