@@ -27,6 +27,16 @@ DESCRIPTION = """A simulator for the deduplication protocol."""
 
 @utils.timeit
 def simulate(args):
+    if args.rlc <= 0 and args.rlu <= 0:
+        raise Exception("--pake-runs or --check-limit must be positive")
+
+    elif args.rlc <= 0:
+        args.rlc = 100 - args.rlu
+        print("Implicitly setting RLc = %i" % args.rlc, file=sys.stderr)
+
+    elif args.rlu <= 0:
+        args.rlu = 100 - args.rlc
+        print("Implicitly setting RLu = %i" % args.rlu, file=sys.stderr)
 
     # A dict of short_hash -> [{ file, checks_available, copies }] for at most
     # RLu most common files for the short hash.
