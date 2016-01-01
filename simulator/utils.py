@@ -17,6 +17,7 @@ import functools
 import random
 import resource
 import timer
+import tqdm
 import sys
 
 # The number of iterations to wait between progress reports during long lasting
@@ -151,14 +152,4 @@ def collect(iterable):
         A List that contains the values from the iterable.
     """
 
-    lst = []
-    tmr = timer.Timer()
-    for i, value in enumerate(iterable):
-        if i and i % REPORT_FREQUENCY == 0:
-            print("%i items collected, time=%s, mem=[%s]" % (
-                i, tmr.elapsed_str, get_mem_info(lst)), file=sys.stderr)
-            tmr.reset()
-
-        lst.append(value)
-
-    return lst
+    return [v for v in tqdm.tqdm(iterable, desc="Collecting items")]
