@@ -172,10 +172,22 @@ def simulate(args):
         # Update the most_common mapping
         sh_most_common_files[bucket_id] = new_most_common
 
-        # Print the number to files to the output file
-        print("%i,%i" % (data_in_storage, data_uploaded))
+        if not args.only_final:
+            # Print the number to files to the output file
+            print("%i,%i" % (data_in_storage, data_uploaded))
 
     dedup_percentage = 1 - data_in_storage / data_uploaded
+
+    # Print the results if asked to. If this was false, the progress has been
+    # printed as files were being uploaded.
+    if args.only_final:
+        print("%s,%s,%s,%s" % (
+            args.rlc,
+            args.rlu,
+            args.max_threshold,
+            dedup_percentage)
+        )
+
     print("+++ Done. stored=%s, uploaded=%s, dedup_percentage=%f" % (
         utils.sizeof_fmt(data_in_storage), utils.sizeof_fmt(data_uploaded),
         dedup_percentage), file=sys.stderr)
@@ -202,4 +214,8 @@ if __name__ == "__main__":
     parser.add_argument("--with-sizes", action="store_true",
                         help="Use size information of the files in the " +
                         "protocol.")
+    parser.add_argument("--only-final", action="store_true",
+                        help="Only print final results from the simulation. " +
+                        "The format of that line is: " +
+                        "<RLc>,<RLu>,<max_threshold>,<dedup_percentage>")
     simulate(parser.parse_args())
