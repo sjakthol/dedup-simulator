@@ -105,6 +105,9 @@ def simulate(args):
                     # be uploaded is a copy of this file, we increase the count
                     # for that file
                     data["copies"] += 1
+
+                    # The most common files need to be sorted
+                    needs_most_common_sort = True
                 else:
                     # Deduplication \o/
                     file_deduplicated = True
