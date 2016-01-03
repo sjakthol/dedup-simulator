@@ -97,7 +97,9 @@ def simulate(args):
             # If this is the uploaded file but has already been
             # deduplicated as a different file, the second match is just
             # ignored
-            if data["file"] == upload and not file_deduplicated:
+            if data["file"] == upload and \
+               not file_deduplicated and  \
+               not needs_most_common_sort:
                 if data["threshold"] < data["copies"]:
                     # This was a match but the threshold has not been met. The
                     # uploader receives a random key and uploads a new file to
@@ -106,8 +108,6 @@ def simulate(args):
                     # for that file
                     data["copies"] += 1
 
-                    # The most common files need to be sorted
-                    needs_most_common_sort = True
                 else:
                     # Deduplication \o/
                     file_deduplicated = True
@@ -118,7 +118,7 @@ def simulate(args):
                     # The popularity of this file went up by 1
                     data["copies"] += 1
 
-                    needs_most_common_sort = True
+                needs_most_common_sort = True
 
             # A check was performed against this file.
             data["checks_available"] -= 1
