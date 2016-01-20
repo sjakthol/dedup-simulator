@@ -100,7 +100,7 @@ def simulate(args):
             if data["file"] == upload and \
                not file_deduplicated and  \
                not needs_most_common_sort:
-                if data["threshold"] < data["copies"]:
+                if data["threshold"] > data["copies"]:
                     # This was a match but the threshold has not been met. The
                     # uploader receives a random key and uploads a new file to
                     # the server. However, since we know that the file about to
