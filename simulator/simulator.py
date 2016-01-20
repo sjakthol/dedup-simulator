@@ -18,11 +18,16 @@ import argparse
 import collections
 import operator
 import random
+import recordclass
 import sys
 import timer
 import utils
 
 DESCRIPTION = """A simulator for the deduplication protocol."""
+
+# A single file in the simulation
+File = recordclass.recordclass("File",
+                               "hash checks_available copies threshold")
 
 
 @utils.timeit
@@ -38,20 +43,13 @@ def simulate(args):
         args.rlu = 100 - args.rlc
         print("Implicitly setting RLu = %i" % args.rlu, file=sys.stderr)
 
-    # A dict of short_hash -> [{ file, checks_available, copies }] for at most
-    # RLu most common files for the short hash.
-    # * file = hash of the file
-    # * checks_available = number of checks the uploaders can make
-    # * copies = the popularity of the file
-    sh_most_common_files = {}
+    # A dict of bucket_id -> [File, File, ..., File] for each bucket
+    buckets = collections.defaultdict(list)
 
-    # A dict of short_hash -> collections.deque([f1, f2, f3, ...]) for files
-    # that have been uploaded but not deduplicated. If one of the most_common
-    # files runs out of checkers one of these files will be selected to replace
-    # that one.
-    sh_uncommon_files = {}
-
+    # The number of bytes saved to the storage
     data_in_storage = 0
+
+    # The number of bytes uploaded through the protocol before deduplication
     data_uploaded = 0
 
     tmr = timer.Timer()
@@ -77,103 +75,73 @@ def simulate(args):
         else:
             bucket_id = short_hash
 
-        # Check if this is the first time a file with this short has is
-        # uploaded.
-        if bucket_id not in sh_most_common_files:
-            # Create the most common list for this short hash and size
-            sh_most_common_files[bucket_id] = []
-
-            # Create the uncommon file list for this short hash
-            sh_uncommon_files[bucket_id] = collections.deque()
-
-        # The list of RLu most common files.
-        most_common = sh_most_common_files[bucket_id]
+        # The list of the files in the bucket in the order of their popularity
+        files = buckets[bucket_id]
 
         # If the upload was deduplicated.
         file_deduplicated = False
-        needs_most_common_sort = False
+        match_found = False
+        match_index = 0
 
-        for data in most_common:
+        # The number of files considered for deduplication
+        files_considered = 0
+
+        for i, fl in enumerate(files):
+            if fl.checks_available < 1:
+                # This file no longer has checkers. Skip it.
+                # TODO: Check if these could be removed from the array or is
+                # removal too expensive
+                continue
+
+            files_considered += 1
+
             # If this is the uploaded file but has already been
             # deduplicated as a different file, the second match is just
             # ignored
-            if data["file"] == upload and \
-               not file_deduplicated and  \
-               not needs_most_common_sort:
-                if data["threshold"] > data["copies"]:
-                    # This was a match but the threshold has not been met. The
-                    # uploader receives a random key and uploads a new file to
-                    # the server. However, since we know that the file about to
-                    # be uploaded is a copy of this file, we increase the count
-                    # for that file
-                    data["copies"] += 1
+            if fl.hash == upload and not file_deduplicated and not match_found:
+                match_found = True
+                match_index = i
 
-                else:
+                # Check if the threshold has already been met and deduplicate
+                # if it has
+                if fl.copies >= fl.threshold:
                     # Deduplication \o/
                     file_deduplicated = True
 
                     # This "uploader" will perform RL_c checks for this file.
-                    data["checks_available"] += args.rlc
+                    fl.checks_available += args.rlc
 
-                    # The popularity of this file went up by 1
-                    data["copies"] += 1
-
-                needs_most_common_sort = True
+                # The popularity of this file went up by 1
+                fl.copies += 1
 
             # A check was performed against this file.
-            data["checks_available"] -= 1
+            fl.checks_available -= 1
 
-            #assert data["checks_available"] >= 0
-            #assert data["copies"] >= 1
+            if files_considered == args.rlu:
+                # The uploader rate limit has been reached.
+                break
 
         if not file_deduplicated:
             # The upload could not be deduplicated.
             data_in_storage += size
 
-            # Add the file to the end of the list of uncommon files
-            sh_uncommon_files[bucket_id].append(upload)
+            # Add the file to the list of files in this bucket.
+            files.append(File(
+                hash=upload,
+                checks_available=args.rlc,
+                copies=1,
+                threshold=random.randint(2, args.max_threshold)
+            ))
 
-        # Remove files that have no more checkers available
-        new_most_common = filter(operator.itemgetter("checks_available"),
-                                 most_common)
+        # The matching file had its popularity increase. Make the list
+        # sorted again by shifting the item left until the list is ordered.
+        while match_found and match_index > 0 and \
+                files[match_index - 1].copies < files[match_index].copies:
 
-        if needs_most_common_sort:
-            # Sort the most common files by popularity. Since all new files
-            # that might be added to the list have only one copy this can be
-            # done here, before those are appended to the list.
-            new_most_common = sorted(new_most_common,
-                                     key=operator.itemgetter("copies"),
-                                     reverse=True)
-        else:
-            new_most_common = list(new_most_common)
+            files[match_index - 1], files[match_index] = \
+                files[match_index], files[match_index - 1]
 
-        # Check if some files ran out of checkers and add new ones.
-        new_files_needed = args.rlu - len(new_most_common)
-        if new_files_needed > 0:
-            # The list of most common files is not full.
-            uncommon_files = sh_uncommon_files[bucket_id]
-
-            # Add new files to the list until either a) there's enough
-            # files or b) there's no more uncommon files to add
-            while new_files_needed > 0 and uncommon_files:
-                new_file = uncommon_files.popleft()
-
-                # Add the file to the list of most common files. Since this
-                # file was not deduplicated earlier the server only knows a
-                # single user who has uploaded this file. Thus it has one
-                # copy and checks of that user available.
-                new_most_common.append({
-                    "file": new_file,
-                    "checks_available": args.rlc,
-                    "copies": 1,
-                    "threshold": random.randint(2, args.max_threshold)})
-
-                new_files_needed -= 1
-
-        assert len(new_most_common) <= args.rlu
-
-        # Update the most_common mapping
-        sh_most_common_files[bucket_id] = new_most_common
+            match_index -= 1
 
         if not args.only_final:
             # Print the number to files to the output file
