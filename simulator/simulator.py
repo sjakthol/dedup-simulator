@@ -54,7 +54,7 @@ def simulate(args):
 
     tmr = timer.Timer()
     for (i, (upload, size)) in enumerate(utils.read_upload_stream()):
-        data_uploaded += size
+        data_uploaded += 1 if args.percentage_with_counts else size
 
         if (i + 1) % utils.REPORT_FREQUENCY == 0:
             percentage = 1 - data_in_storage / data_uploaded
@@ -123,7 +123,7 @@ def simulate(args):
 
         if not file_deduplicated:
             # The upload could not be deduplicated.
-            data_in_storage += size
+            data_in_storage += 1 if args.percentage_with_counts else size
 
             # Add the file to the list of files in this bucket.
             files.append(File(
@@ -185,6 +185,10 @@ if __name__ == "__main__":
     parser.add_argument("--with-sizes", action="store_true",
                         help="Use size information of the files in the " +
                         "protocol.")
+    parser.add_argument("--percentage-with-counts", action="store_true",
+                        help="If specified, the deduplication percentage is " +
+                        "calculated based on file counts instead of their " +
+                        "sizes.")
     parser.add_argument("--only-final", action="store_true",
                         help="Only print final results from the simulation. " +
                         "The format of that line is: " +
