@@ -104,7 +104,7 @@ def simulate(args):
 
                 # Check if the threshold has already been met and deduplicate
                 # if it has
-                if fl.copies >= fl.threshold:
+                if args.deduplicate_below_threshold or fl.copies >= fl.threshold:
                     # Deduplication \o/
                     file_deduplicated = True
 
@@ -189,6 +189,9 @@ if __name__ == "__main__":
                         help="If specified, the deduplication percentage is " +
                         "calculated based on file counts instead of their " +
                         "sizes.")
+    parser.add_argument("--deduplicate-below-threshold", action="store_true",
+                        help="If specified, deduplication occurs even if the " +
+                        "number of copies is below the threshold")
     parser.add_argument("--only-final", action="store_true",
                         help="Only print final results from the simulation. " +
                         "The format of that line is: " +
