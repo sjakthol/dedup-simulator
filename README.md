@@ -95,28 +95,6 @@ The results can be found from the `results.csv` file.
 ## Scripts
 The scripts folder contains a couple useful scripts.
 
-### Sampler
-Given a number of samples and the number of all lines to be fed to the script,
-the `scripts/sampler.py` will select evenly generated line samples that it
-prints to standard output. The first and last line are always included.
-
-The output lines will be prepended with the line number and a comma.
-
-#### Example: Print 10,000 lines from 110,231,310 total lines
-Here the file `data` contains 110,231,310 lines:
-```shell
-cat data | python3 scripts/sampler.py --samples 10000 --total-lines 110231310 \
-> samples
-```
-
-The `samples` file contains following data:
-```
-<sample 1 line number>, <sample 1>
-<sample 2 line number>, <sample 2>
-...
-<sample 10000 line number>, <sample 10000>
-```
-
 ### Short hash and size listing
 The scripts `list-sh-size-pairs.py` and `list-sh.py` will take a data file
 generated with `file_counts.py` and print the (short hash, file size) pairs
