@@ -197,6 +197,17 @@ class NormalStreamGenerator(UploadStreamGenerator):
         return functools.partial(random.gauss, mu, sigma)
 
 
+class LogNormalStreamGenerator(UploadStreamGenerator):
+    def __init__(self, args):
+        super().__init__(args)
+
+    def get_generator(self):
+        mu = random.randint(1, 2000)
+        sigma = random.randint(20, 200)
+
+        return functools.partial(random.lognormvariate, mu, sigma)
+
+
 @utils.timeit
 def main():
     parser = argparse.ArgumentParser(description=DESC)
@@ -207,7 +218,7 @@ def main():
                              "'<sha1 hash>  <copies>  <size>'. Defaults to " +
                              "stdin '-'")
     parser.add_argument("--distribution",
-                        action="store", choices=["uniform", "normal"],
+                        action="store", choices=["uniform", "normal", "lognormal"],
                         default="uniform",
                         help="The type of distribution the popularities " +
                              "follow wrt. to time")
@@ -217,6 +228,8 @@ def main():
         g = UniformStreamGenerator(args)
     elif args.distribution == "normal":
         g = NormalStreamGenerator(args)
+    elif args.distribution == "lognormal":
+        g = LogNormalStreamGenerator(args)
 
     g.generate()
 
