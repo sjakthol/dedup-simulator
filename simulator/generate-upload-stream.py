@@ -191,8 +191,8 @@ class NormalStreamGenerator(UploadStreamGenerator):
         super().__init__(args)
 
     def get_generator(self):
-        mu = random.randint(1, 2000)
-        sigma = random.randint(20, 200)
+        mu = random.randint(1, 20000)
+        sigma = random.randint(20, 2000)
 
         return functools.partial(random.gauss, mu, sigma)
 
@@ -202,8 +202,8 @@ class LogNormalStreamGenerator(UploadStreamGenerator):
         super().__init__(args)
 
     def get_generator(self):
-        mu = random.randint(1, 2000)
-        sigma = random.randint(20, 200)
+        mu = math.log(random.randint(1, 20000))
+        sigma = math.log(random.randint(20, 2000))
 
         return functools.partial(random.lognormvariate, mu, sigma)
 
