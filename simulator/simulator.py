@@ -129,8 +129,15 @@ def simulate(args):
                 # The popularity of this file went up by 1
                 fl.copies += 1
 
-            # A check was performed against this file.
-            fl.checks_available -= 1
+                if args.rlc_only_success:
+                    # A check was performed against this file BUT only
+                    # successful attempts decrease the limit
+                    fl.checks_available -= 1
+
+            if not args.rlc_only_success:
+                # A check was performed against this file and all attempts
+                # decrease the limit
+                fl.checks_available -= 1
 
             if files_considered == args.rlu:
                 # The uploader rate limit has been reached.
@@ -196,6 +203,9 @@ if __name__ == "__main__":
                         dest="rlc", action="store", default=70, type=int,
                         help="The number of times an uploader can perform a " +
                              "check for a file (RL_c).")
+    parser.add_argument("--rlc-only-success", action="store_true",
+                        help="Only decrease the number of available checks " +
+                        "on successful deduplication")
     parser.add_argument("--max-threshold",
                         action="store", default=20, type=int,
                         help="The maximum value for the random threshold")
