@@ -16,6 +16,7 @@
 
 import argparse
 import collections
+import math
 import operator
 import random
 import recordclass
@@ -93,6 +94,20 @@ def simulate(args):
                 # removal too expensive
                 continue
 
+            # Calculate how many checkers there are available
+            num_checkers = math.ceil(fl.checks_available / args.rlc)
+
+            # Calculate the propability of all available checkers being online.
+            # Since P(checker offline) = args.offline_rate / 100,
+            # P(all checkers offline)
+            #   = P(c1 offline) AND P(c2 offline) ... P(cn offline)
+            #   = P(c1 offline) * P(c2 offline)* ... * P(cn offline)
+            #   = P(checker offline) ^ n
+            p_all_checkers_offline = math.pow(args.offline_rate, num_checkers)
+            if random.random() < p_all_checkers_offline:
+                # All checkers were offline, try the next one
+                continue
+
             files_considered += 1
 
             # If this is the uploaded file but has already been
@@ -142,6 +157,8 @@ def simulate(args):
                 files[match_index], files[match_index - 1]
 
             match_index -= 1
+
+        # assert all(files[i].copies >= files[i+1].copies for i in range(len(files)-1))
 
         if not args.only_final:
             # Print the number to files to the output file
@@ -196,4 +213,7 @@ if __name__ == "__main__":
                         help="Only print final results from the simulation. " +
                         "The format of that line is: " +
                         "<RLc>,<RLu>,<max_threshold>,<dedup_percentage>")
+    parser.add_argument("--offline-rate", action="store", default=0, type=float,
+                        help="The probability that a client is offline " +
+                        "during an upload.")
     simulate(parser.parse_args())
