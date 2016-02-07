@@ -15,12 +15,14 @@
 function [] = dedup_percentage_plot(directory, glob)
   files = dir(fullfile(directory, glob));
   names = { files(~[files.isdir]).name };
+  figure; hold
+  ylim([0,1]);
   for f = names
       file = char(fullfile(directory, f));
       data = csvread(file);
-      ys = data(:, 2);
-      xs = data(:, 1);
-      percentages = 1 - ys ./ xs;
+      data_in_storage = data(:, 1);
+      data_uploaded = data(:, 2);
+      percentages = 1 - data_in_storage ./ data_uploaded;
       %xsx = 1:step:length(data)*step;
       %[rows, cols] = size(data);
       %if rows > cols
@@ -28,8 +30,9 @@ function [] = dedup_percentage_plot(directory, glob)
       %else
       %    percentages = 1 - data ./ xsx;
       %end
-      plot(xs, percentages);
+      plot(percentages);
   end
+  legend(names);
 end
 
 % function [] = scatter_plot(data, n)
