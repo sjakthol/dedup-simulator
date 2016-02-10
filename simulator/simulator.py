@@ -176,10 +176,11 @@ def simulate(args):
     # Print the results if asked to. If this was false, the progress has been
     # printed as files were being uploaded.
     if args.only_final:
-        print("%s,%s,%s,%s" % (
+        print("%s,%s,%s,%s,%s" % (
             args.rlc,
             args.rlu,
             args.max_threshold,
+            args.offline_rate,
             dedup_percentage)
         )
 
