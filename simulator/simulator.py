@@ -113,7 +113,7 @@ def simulate(args):
             # If this is the uploaded file but has already been
             # deduplicated as a different file, the second match is just
             # ignored
-            if fl.hash == upload and not file_deduplicated and not match_found:
+            if fl.hash == upload and not match_found:
                 match_found = True
                 match_index = i
 
@@ -123,8 +123,11 @@ def simulate(args):
                     # Deduplication \o/
                     file_deduplicated = True
 
-                    # This "uploader" will perform RL_c checks for this file.
-                    fl.checks_available += args.rlc
+                # This "uploader" will perform RL_c checks for this file. This
+                # also happens if the threshold has not yet been met. In that
+                # case the uploader just uses a different key when deduplicating
+                # this file
+                fl.checks_available += args.rlc
 
                 # The popularity of this file went up by 1
                 fl.copies += 1
@@ -147,6 +150,8 @@ def simulate(args):
             # The upload could not be deduplicated.
             data_in_storage += 1 if args.percentage_with_counts else size
 
+        # There was no match for this file. Add a new file to the bucket.
+        if not match_found:
             # Add the file to the list of files in this bucket.
             files.append(File(
                 hash=upload,
