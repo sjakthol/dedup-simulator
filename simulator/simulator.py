@@ -110,6 +110,9 @@ def simulate(args):
 
             files_considered += 1
 
+            # Check was performed
+            fl.checks_available -= 1
+
             # If this is the uploaded file but has already been
             # deduplicated as a different file, the second match is just
             # ignored
@@ -123,24 +126,20 @@ def simulate(args):
                     # Deduplication \o/
                     file_deduplicated = True
 
-                # This "uploader" will perform RL_c checks for this file. This
-                # also happens if the threshold has not yet been met. In that
-                # case the uploader just uses a different key when deduplicating
-                # this file
-                fl.checks_available += args.rlc
-
                 # The popularity of this file went up by 1
                 fl.copies += 1
 
-                if args.rlc_only_success:
-                    # A check was performed against this file BUT only
-                    # successful attempts decrease the limit
-                    fl.checks_available -= 1
-
-            if not args.rlc_only_success:
-                # A check was performed against this file and all attempts
-                # decrease the limit
-                fl.checks_available -= 1
+                if args.one_successful_check:
+                    # A successful check; the previous checker stops performing
+                    # checks and the new uploader becomes the sole checker
+                    # for this file
+                    fl.checks_available = args.rlc
+                else:
+                    # This "uploader" will perform RLc checks for this file.
+                    # This also happens if the threshold has not yet been met.
+                    # In that case the uploader just uses a different key when
+                    # deduplicating this file
+                    fl.checks_available += args.rlc
 
             if files_considered == args.rlu:
                 # The uploader rate limit has been reached.
@@ -209,9 +208,9 @@ if __name__ == "__main__":
                         dest="rlc", action="store", default=70, type=int,
                         help="The number of times an uploader can perform a " +
                              "check for a file (RL_c).")
-    parser.add_argument("--rlc-only-success", action="store_true",
-                        help="Only decrease the number of available checks " +
-                        "on successful deduplication")
+    parser.add_argument("--one-successful-check", action="store_true",
+                        help="Checkers stop performing checks after they " +
+                        "have performed one successful check")
     parser.add_argument("--max-threshold",
                         action="store", default=20, type=int,
                         help="The maximum value for the random threshold")
