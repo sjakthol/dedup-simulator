@@ -28,10 +28,11 @@ DESCRIPTION = """A simulator for the deduplication protocol."""
 
 # A single file in the simulation
 File = recordclass.recordclass("File",
-                               "hash checks_available copies threshold")
+                               "hash checkers copies threshold")
 
 
 @utils.timeit
+#@profile
 def simulate(args):
     if args.rlc <= 0 and args.rlu <= 0:
         raise Exception("--pake-runs or --check-limit must be positive")
@@ -88,14 +89,17 @@ def simulate(args):
         files_considered = 0
 
         for i, fl in enumerate(files):
-            if fl.checks_available < 1:
+            # The checkers for this file
+            checkers = fl.checkers
+
+            # Calculate how many checkers there are available
+            num_checkers = len(checkers)
+
+            if not num_checkers:
                 # This file no longer has checkers. Skip it.
                 # TODO: Check if these could be removed from the array or is
                 # removal too expensive
                 continue
-
-            # Calculate how many checkers there are available
-            num_checkers = math.ceil(fl.checks_available / args.rlc)
 
             # Calculate the propability of all available checkers being online.
             # Since P(checker offline) = args.offline_rate / 100,
@@ -110,8 +114,13 @@ def simulate(args):
 
             files_considered += 1
 
-            # Check was performed
-            fl.checks_available -= 1
+            # The last checker in the list has performed the least number of
+            # checks
+            checker_index = num_checkers - 1
+
+            # Decrease the check count for the checker.
+            original_checks = checkers[checker_index]
+            checkers[checker_index] -= 1
 
             # If this is the uploaded file but has already been
             # deduplicated as a different file, the second match is just
@@ -120,8 +129,9 @@ def simulate(args):
                 match_found = True
                 match_index = i
 
-                # Check if the threshold has already been met and deduplicate
-                # if it has
+                # Deduplication occurs if
+                # (1) we deduplicate even below threshold or
+                # (2) we are above the threshold
                 if args.deduplicate_below_threshold or fl.copies >= fl.threshold:
                     # Deduplication \o/
                     file_deduplicated = True
@@ -129,17 +139,26 @@ def simulate(args):
                 # The popularity of this file went up by 1
                 fl.copies += 1
 
-                if args.one_successful_check:
-                    # A successful check; the previous checker stops performing
-                    # checks and the new uploader becomes the sole checker
-                    # for this file
-                    fl.checks_available = args.rlc
+                if args.one_successful_check and file_deduplicated:
+                    # A successful check; this checker replaces the client who
+                    # performed the check for this upload.
+                    checkers[checker_index] = args.rlc
                 else:
                     # This "uploader" will perform RLc checks for this file.
                     # This also happens if the threshold has not yet been met.
                     # In that case the uploader just uses a different key when
                     # deduplicating this file
-                    fl.checks_available += args.rlc
+                    checkers += [args.rlc]
+
+            if checkers[checker_index] == 0:
+                # The checker has hit the limit;
+                checkers.pop(checker_index)
+
+            elif checkers[checker_index] != args.rlc:
+                # The uploader did not replace the checker. Sort the list.
+                checkers.sort()
+
+            # assert all(checkers[i] <= checkers[i+1] for i in range(len(checkers)-1))
 
             if files_considered == args.rlu:
                 # The uploader rate limit has been reached.
@@ -154,7 +173,9 @@ def simulate(args):
             # Add the file to the list of files in this bucket.
             files.append(File(
                 hash=upload,
-                checks_available=args.rlc,
+                # The list of checkers for this file; each entry is the number
+                # of checks that checker has available
+                checkers=[args.rlc],
                 copies=1,
                 threshold=random.randint(2, args.max_threshold)
             ))
