@@ -24,7 +24,21 @@ import sys
 import timer
 import utils
 
-DESCRIPTION = """A simulator for the deduplication protocol."""
+DESCRIPTION = """A simulator for the deduplication protocol. The following
+statline is printed to the standard output after each upload:
+    <files_in_storage>,<files_uploaded>,<data_in_storage>,<data_uploaded>
+
+Redirecting the stdout to a file will produce a valid CSV file with the raw
+simulation resuts.
+
+If the flag --only-final is used, no results are printed during simulations but
+the final deduplication percentage is outputted with the simulation parameters
+after all files have been uploaded. That line has following format (no newline
+in the actual output):
+    <RLc>,<RLu>,<max_threshold>,<offline_rate>
+    <dedup_percentage_based_on_file_counts>,<dedup_percentage_based_on_bytes>
+
+"""
 
 # A single file in the simulation
 File = recordclass.recordclass("File",
@@ -34,40 +48,56 @@ File = recordclass.recordclass("File",
 @utils.timeit
 #@profile
 def simulate(args):
-    if args.rlc <= 0 and args.rlu <= 0:
-        raise Exception("--pake-runs or --check-limit must be positive")
-
-    elif args.rlc <= 0:
-        args.rlc = 100 - args.rlu
-        print("Implicitly setting RLc = %i" % args.rlc, file=sys.stderr)
-
-    elif args.rlu <= 0:
-        args.rlu = 100 - args.rlc
-        print("Implicitly setting RLu = %i" % args.rlu, file=sys.stderr)
-
     # A dict of bucket_id -> [File, File, ..., File] for each bucket
     buckets = collections.defaultdict(list)
 
     # The number of bytes saved to the storage
     data_in_storage = 0
+    files_in_storage = 0
 
     # The number of bytes uploaded through the protocol before deduplication
     data_uploaded = 0
+    files_uploaded = 0
 
     tmr = timer.Timer()
+    tmr_start = timer.Timer()
+
+    def print_stats():
+        """A helper for printing statistics about the simulation"""
+        data = (
+            args.rlc,
+            args.rlu,
+            args.max_threshold,
+            args.offline_rate,
+            utils.num_fmt(files_in_storage),
+            utils.num_fmt(files_uploaded),
+            1 - files_in_storage / files_uploaded,
+            utils.sizeof_fmt(data_in_storage),
+            utils.sizeof_fmt(data_uploaded),
+            1 - data_in_storage / data_uploaded,
+            utils.get_mem_info(),
+            tmr.elapsed_str,
+            tmr_start.elapsed_str,
+        )
+
+        tmpl = (
+            "Statistics: \n"
+            "  Params: RLc=%s, RLu=%s, max_threshold=%s, offline_rate=%s\n"
+            "  Files: files_in_storage=%s, files_uploaded=%s, DDP=%s\n"
+            "  Data: data_in_storage=%s, data_uploaded=%s, DDP=%s\n"
+            "  Execution: memory[%s], chunk_time=%s, total_time=%s"
+        )
+
+        tmr.reset()
+
+        print(tmpl % data, file=sys.stderr)
+
     for (i, (upload, size)) in enumerate(utils.read_upload_stream()):
-        data_uploaded += 1 if args.percentage_with_counts else size
+        data_uploaded += size
+        files_uploaded += 1
 
         if (i + 1) % utils.REPORT_FREQUENCY == 0:
-            percentage = 1 - data_in_storage / data_uploaded
-            print("%s uploads, percentage %.4f, time %s, %s" % (
-                utils.num_fmt(i),
-                percentage,
-                tmr.elapsed_str,
-                utils.get_mem_info()
-            ), file=sys.stderr)
-
-            tmr.reset()
+            print_stats()
 
         # Get the short hash.
         short_hash = upload >> (args.hashlen - args.shlen)
@@ -166,7 +196,8 @@ def simulate(args):
 
         if not file_deduplicated:
             # The upload could not be deduplicated.
-            data_in_storage += 1 if args.percentage_with_counts else size
+            data_in_storage += size
+            files_in_storage += 1
 
         # There was no match for this file. Add a new file to the bucket.
         if not match_found:
@@ -194,62 +225,73 @@ def simulate(args):
 
         if not args.only_final:
             # Print the number to files to the output file
-            print("%i,%i" % (data_in_storage, data_uploaded))
-
-    dedup_percentage = 1 - data_in_storage / data_uploaded
+            print("%i,%i,%i,%i" % (
+                files_in_storage,
+                files_uploaded,
+                data_in_storage,
+                data_uploaded,
+            ))
 
     # Print the results if asked to. If this was false, the progress has been
     # printed as files were being uploaded.
     if args.only_final:
-        print("%s,%s,%s,%s,%s" % (
+        print("%s,%s,%s,%s,%s,%s" % (
             args.rlc,
             args.rlu,
             args.max_threshold,
             args.offline_rate,
-            dedup_percentage)
-        )
+            1 - files_in_storage / files_uploaded,
+            1 - data_in_storage / data_uploaded,
+        ))
 
-    print("+++ Done. stored=%s, uploaded=%s, dedup_percentage=%f" % (
-        utils.sizeof_fmt(data_in_storage), utils.sizeof_fmt(data_uploaded),
-        dedup_percentage), file=sys.stderr)
+    print("+++ Done - ", file=sys.stderr, end="")
+    print_stats()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=DESCRIPTION)
-    parser.add_argument("--short-hash-length",
+    params = parser.add_argument_group("Protocol Parameters")
+    params.add_argument("--short-hash-length",
                         dest="shlen", action="store", default=13, type=int,
                         help="The length of short hash in bits.")
-    parser.add_argument("--pake-runs",
-                        dest="rlu", action="store", default=30, type=int,
-                        help="The number of files that are considered when " +
-                             "uploading a new file (RL_u).")
-    parser.add_argument("--hash-length",
+    params.add_argument("--hash-length",
                         dest="hashlen", action="store", default=160, type=int,
                         help="The length of the dataset hashes in bits.")
-    parser.add_argument("--check-limit",
+
+    params.add_argument("--check-limit",
                         dest="rlc", action="store", default=70, type=int,
                         help="The number of times an uploader can perform a " +
                              "check for a file (RL_c).")
-    parser.add_argument("--one-successful-check", action="store_true",
-                        help="Checkers stop performing checks after they " +
-                        "have performed one successful check")
-    parser.add_argument("--max-threshold",
+    params.add_argument("--pake-runs",
+                        dest="rlu", action="store", default=30, type=int,
+                        help="The number of files that are considered when " +
+                             "uploading a new file (RL_u).")
+    params.add_argument("--max-threshold",
                         action="store", default=20, type=int,
                         help="The maximum value for the random threshold")
-    parser.add_argument("--with-sizes", action="store_true",
-                        help="Use size information of the files in the " +
-                        "protocol.")
-    parser.add_argument("--percentage-with-counts", action="store_true",
-                        help="If specified, the deduplication percentage is " +
-                        "calculated based on file counts instead of their " +
-                        "sizes.")
-    parser.add_argument("--deduplicate-below-threshold", action="store_true",
-                        help="If specified, deduplication occurs even if the " +
-                        "number of copies is below the threshold")
-    parser.add_argument("--only-final", action="store_true",
-                        help="Only print final results from the simulation. " +
-                        "The format of that line is: " +
-                        "<RLc>,<RLu>,<max_threshold>,<dedup_percentage>")
-    parser.add_argument("--offline-rate", action="store", default=0, type=float,
+    params.add_argument("--offline-rate", action="store", default=0, type=float,
                         help="The probability that a client is offline " +
                         "during an upload.")
+
+    protof = parser.add_argument_group(
+        "Protocol Version",
+        "These arguments change the protocol to be used for this simulation.")
+    protof.add_argument("--one-successful-check", action="store_true",
+                        help="Checkers stop performing checks after they " +
+                        "have performed one successful check")
+    protof.add_argument("--with-sizes", action="store_true",
+                        help="Use size information of the files in the " +
+                        "protocol.")
+    protof.add_argument("--deduplicate-below-threshold", action="store_true",
+                        help="If specified, deduplication occurs even if the " +
+                        "number of copies is below the threshold")
+
+    parser.add_argument(
+        "--only-final", action="store_true",
+        help=("Only print final results from the simulation. The format of "
+              "that line is: "
+              "<RLc>,<RLu>,<max_threshold>,"
+              "<dedup_percentage_based_on_file_counts>,"
+              "<dedup_percentage_based_on_bytes>")
+    )
+
     simulate(parser.parse_args())
