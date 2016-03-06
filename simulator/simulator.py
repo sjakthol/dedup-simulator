@@ -119,17 +119,17 @@ def simulate(args):
         files_considered = 0
 
         for i, fl in enumerate(files):
+            if not fl.checkers:
+                # This file no longer has checkers. Skip it.
+                # TODO: Check if these could be removed from the array or is
+                # removal too expensive
+                continue
+
             # The checkers for this file
             checkers = fl.checkers
 
             # Calculate how many checkers there are available
             num_checkers = len(checkers)
-
-            if not num_checkers:
-                # This file no longer has checkers. Skip it.
-                # TODO: Check if these could be removed from the array or is
-                # removal too expensive
-                continue
 
             # Calculate the propability of all available checkers being online.
             # Since P(checker offline) = args.offline_rate / 100,
@@ -137,8 +137,8 @@ def simulate(args):
             #   = P(c1 offline) AND P(c2 offline) ... P(cn offline)
             #   = P(c1 offline) * P(c2 offline)* ... * P(cn offline)
             #   = P(checker offline) ^ n
-            p_all_checkers_offline = math.pow(args.offline_rate, num_checkers)
-            if random.random() < p_all_checkers_offline:
+            if args.offline_rate and \
+                    random.random() < math.pow(args.offline_rate, num_checkers):
                 # All checkers were offline, try the next one
                 continue
 
@@ -149,7 +149,6 @@ def simulate(args):
             checker_index = num_checkers - 1
 
             # Decrease the check count for the checker.
-            original_checks = checkers[checker_index]
             checkers[checker_index] -= 1
 
             # If this is the uploaded file but has already been
