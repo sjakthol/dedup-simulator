@@ -92,6 +92,7 @@ def simulate(args):
 
         print(tmpl % data, file=sys.stderr)
 
+    llen = len
     for (i, (upload, size)) in enumerate(utils.read_upload_stream()):
         data_uploaded += size
         files_uploaded += 1
@@ -102,10 +103,9 @@ def simulate(args):
         # Get the short hash.
         short_hash = upload >> (args.hashlen - args.shlen)
 
+        bucket_id = short_hash
         if args.with_sizes:
-            bucket_id = short_hash | size << args.shlen
-        else:
-            bucket_id = short_hash
+            bucket_id |= size << args.shlen
 
         # The list of the files in the bucket in the order of their popularity
         files = buckets[bucket_id]
@@ -129,7 +129,7 @@ def simulate(args):
             checkers = fl.checkers
 
             # Calculate how many checkers there are available
-            num_checkers = len(checkers)
+            num_checkers = llen(checkers)
 
             # Calculate the propability of all available checkers being online.
             # Since P(checker offline) = args.offline_rate / 100,
@@ -183,7 +183,7 @@ def simulate(args):
                 # The checker has hit the limit;
                 checkers.pop(checker_index)
 
-            elif checkers[checker_index] != args.rlc:
+            elif num_checkers > 1 and checkers[checker_index] != args.rlc:
                 # The uploader did not replace the checker. Sort the list.
                 checkers.sort()
 
