@@ -37,7 +37,7 @@ Modified on 5.3.2016
 
 @author: Sami Jaktholm <sami.jaktholm@aalto.fi>
 
-Added python3 support and silenced deprecation warning caused by newer sckit.
+Added python3 support and silenced deprecation warning caused by newer scikit.
 '''
 import logging
 import numpy as np

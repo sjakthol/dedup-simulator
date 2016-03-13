@@ -19,6 +19,7 @@ deduplication solution.
 * [Oversampler](#oversampler)
  * [Setup](#setup)
  * [Usage Examples](#usage-examples-4)
+* [Credits](#credits)
 
 ## Introduction
 This repository contains various components that can be used to measure the
@@ -378,3 +379,7 @@ cat home-data.txt | python3 ./simulator/oversample.py --smote-amount 500 > home-
 # Combine the two datasets (original + synthetic) into one large dataset:
 cat home-data.txt home-synthetic-data.txt > home-extended-data.txt
 ```
+
+## Credits
+Thanks to Karsten Jeschkies for his MIT licensed implementation of the SMOTE
+algorithm ([original source](https://github.com/blacklab/nyan/blob/master/shared_modules/smote.py)).
