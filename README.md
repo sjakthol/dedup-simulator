@@ -30,14 +30,14 @@ the collected datasets.
 * Simulator - Reads the generated upload request stream and simulates the
 deduplication protocol.
 
-Together these tool form a simulator pipeline where the output of the previous
-tool is the input for the next step.
+Together these components form a simulator pipeline where the output of the
+previous component is the input for the next step.
 
 This repository also contains additional tools that might be useful:
 * Perfect Protocol Simulator - Measures the perfect deduplication percentage
 for the generated upload request streams that provides a baseline for
 comparisons.
-* Oversampler - A tool for generating larger datasets from a collected dataset.
+* Oversampler - A tool for generating larger datasets from a collected datasets.
 
 The usage of these tools is described in the chapters below.
 
@@ -72,7 +72,7 @@ printed to standard output:
 The standard output should be redirected to a file. Each output line contains
 information for a single file with each value separated by two spaces:
 ```
-  <hash>  <copies>  <size>
+<hash>  <copies>  <size>
 ```
 
 ### Usage Examples
@@ -88,10 +88,10 @@ python ./scripts/file_counts.py /home > home-data.txt
 **Important**: This script requires __python2__ instead of python3 to support
 larger number of unix systems. Python2 can be installed from the python
 website. Therefore, it should not be executed in the virtualenv created in
-the setup section
+the setup section.
 
 ## Upload Request Stream Generator
-One the data has been collected the data needs to be turned into a list of
+Once the data has been collected it needs to be turned into a sequence of
 upload requests. The `simulator/generate-upload-stream.py` script does just
 that.
 
@@ -144,8 +144,8 @@ threshold for a file has not been met (server side deduplication)
 performed one successful check
 
 __Note__: By default, the simulator implements a franken-version of the
-protocol that has never really been used. So you want to specify at least one
-options shown above.
+protocol that has never really been used. So you need to specify at least one
+of the options shown above.
 
 ### Protocol Parameters
 The following options modify the protocol parameters:
@@ -188,13 +188,13 @@ __Note__: The simulator also reports progress to stderr by default.
 ### Usage Examples
 ```shell
 # Processes the uploads from home-stream.bin, the protocol uses file sizes
-# when selecting deduplication candidates and performs deduplication even below
+# when selecting deduplication candidates, deduplication is performed even below
 # threshold and each checker stops performing checks once a match is found.
 # Default parameters are used and results.csv contains statistics after every
 # upload (format above).
 cat home-uniform-stream.bin | python3 simulator/simulator.py --with-sizes --deduplicate-below-threshold --one-successful-check > results.csv
 
-# Simulation with RLu = 40, RLc = 60 (output as above) but only to terminal
+# Simulation with RLu = 40, RLc = 60.
 cat home-uniform-stream.bin | python3 ./simulator/simulator.py --pake-runs 40 --check-limit 60
 
 # Same as the first one, but only store 10000 samples evenly along the
@@ -225,8 +225,8 @@ Here we assume that the directory structure is the following:
 └── enterprise-file-data.txt.gz
 ```
 
-Here `{media, enterprise}-file-data.txt.gz` contains two datasets in the
-dataset collector format.
+Here `{media, enterprise}-file-data.txt.gz` contains two datasets collected
+with the dataset collector.
 
 #### 1. Generate upload request streams
 The following command generates three upload request streams (uniform, normal,
@@ -316,7 +316,6 @@ The command produces the following output files:
 Each line contains stats about uploaded and stored files and bytes that can be
 used to calculate the DDP (see above for column order).
 
-
 ## Perfect Protocol Simulator
 The simulator for measuring perfect deduplication can be found from the file
 `simulator/simulator-perfect.py`. It reads an upload request stream from the
@@ -358,8 +357,8 @@ __Note__: The output only contains the new, generated samples.
 
 ### Setup
 As mentioned earlier, this component has extra dependencies that were not
-installed by default since they require extra dependencies that cannot be
-installed with pip. The packages the oversampler requires are:
+installed by default since they depend on packages that cannot be installed
+with pip. The extra packages the oversampler requires are:
 * numpy
 * scipy
 * scikit-learn
