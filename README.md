@@ -2,12 +2,23 @@ A simulator and related scripts for measuring efficiency of an encrypted data
 deduplication solution.
 
 * [Introduction](#introduction)
-* [Setup](#setup)
-* [Dataset Collector](#dataset-collector)
-* [Upload Request Stream Generator](#upload-request-stream-generator)
-* [Simulator](#simulator)
-* [Perfect Protocol Simulator](#perfect-protocol-simulator)
 * [Links](#links)
+* [General Setup](#general-setup)
+* [Dataset Collector](#dataset-collector)
+ * [Usage Examples](#usage-examples)
+* [Upload Request Stream Generator](#upload-request-stream-generator)
+ * [Usage Examples](#usage-examples-1)
+* [Simulator](#simulator)
+ * [Protocol Options](#protocol-options)
+ * [Protocol Parameters](#protocol-parameters)
+ * [Output Format](#output-format)
+ * [Usage Examples](#usage-examples-2)
+ * [Advanced Example](#advanced-example)
+* [Perfect Protocol Simulator](#perfect-protocol-simulator)
+ * [Usage Examples](#usage-examples-3)
+* [Oversampler](#oversampler)
+ * [Setup](#setup)
+ * [Usage Examples](#usage-examples-4)
 
 ## Introduction
 This repository contains various components that can be used to measure the
@@ -29,7 +40,11 @@ comparisons.
 
 The usage of these tools is described in the chapters below.
 
-## Setup
+## Links
+* Paper: https://eprint.iacr.org/2015/455.pdf
+* Demo Implementation: https://git.ssg.aalto.fi/close/cloud-dedup
+
+## General Setup
 Before the simulator can be used, you need to setup python3 and a virtual
 environment for the required dependencies. The simulator has been used with
 python 3.4.3 but it should also work with newer python3 releases.
@@ -44,7 +59,7 @@ pip install -r requirements.txt # Install the dependencies
 **Note:** If you want to use the oversampler, a bunch of extra dependencies
 are required. See the oversampler documentation below for instructions.
 
-### Dataset Collector
+## Dataset Collector
 The `scripts/file_counts.py` is used to collect the dataset for performing the
 simulations. Given a directory, the script hashes all the files under that
 directory and for each unique file discovered the following information is
@@ -59,7 +74,7 @@ information for a single file with each value separated by two spaces:
   <hash>  <copies>  <size>
 ```
 
-#### Usage Examples
+### Usage Examples
 ```
 # Collect data from the entire file system and write the results to
 # |root-data.txt| in the current directory
@@ -74,7 +89,7 @@ larger number of unix systems. Python2 can be installed from the python
 website. Therefore, it should not be executed in the virtualenv created in
 the setup section
 
-### Upload Request Stream Generator
+## Upload Request Stream Generator
 One the data has been collected the data needs to be turned into a list of
 upload requests. The `simulator/generate-upload-stream.py` script does just
 that.
@@ -100,7 +115,7 @@ ln(2000)`
 are generated in the get_generator() function of different distribution
 classes.
 
-#### Usage Examples
+### Usage Examples
 ```shell
 # uniform distribution; data from home-data.txt
 python3 ./simulator/generate-upload-stream.py home-data.txt > home-uniform-stream.bin
@@ -112,13 +127,13 @@ cat home-data.txt | python3 ./simulator/generate-upload-stream.py --distribution
 cat home-data.txt | python3 ./simulator/generate-upload-stream.py --distribution=lognormal > home-lognormal-stream.bin
 ```
 
-### Simulator
+## Simulator
 The simulator reads an upload request stream from the standard input and prints
 the results to the standard output. It has a lot of command-line options that
 modify the protocol, the protocol parameters and output formats. These options
 are documented here and also when passing the simulator a `--help` flag.
 
-#### Protocol Options
+### Protocol Options
 These options can be specified in the command line to modify the actual
 protocol used for the simulation:
 * `--with-sizes` - take file sizes into account when performing deduplication
@@ -131,7 +146,7 @@ __Note__: By default, the simulator implements a franken-version of the
 protocol that has never really been used. So you want to specify at least one
 options shown above.
 
-#### Protocol Parameters
+### Protocol Parameters
 The following options modify the protocol parameters:
 * `--short-hash-length` - (int) the length of short hash in bits (default: 13)
 * `--hash-length` - (int) the length of the dataset hashes in bits (default:
@@ -145,7 +160,7 @@ each upload (default: 30)
 * `--offline-rate` - (float in range [0, 1]) the probability that a checker is
 offline during an upload (default: 0 i.e. always online)
 
-#### Output Format
+### Output Format
 By default, the simulator prints the simulation status after each upload as a
 comma separated list of values that contains statistics about the number of
 files and bytes that have been uploaded and stored up to that point. Each line
@@ -169,7 +184,7 @@ simulation that contains the protocol parameters and final DDPs:
 
 __Note__: The simulator also reports progress to stderr by default.
 
-#### Usage Examples
+### Usage Examples
 ```shell
 # Processes the uploads from home-stream.bin, the protocol uses file sizes
 # when selecting deduplication candidates and performs deduplication even below
@@ -191,7 +206,7 @@ cat home-uniform-stream.bin | python3 simulator/simulator.py --with-sizes --dedu
 cat home-uniform-stream.bin | python3 ./simulator/simulator.py --only-final > final-result.csv
 ```
 
-#### Advanced Example
+### Advanced Example
 Here's a few examples that use [GNU Parallel](http://www.gnu.org/s/parallel) to
 perform the simulations with different parameters. We start by generating
 differently distributed streams, test out different rate limits for the streams
@@ -212,7 +227,7 @@ Here we assume that the directory structure is the following:
 Here `{media, enterprise}-file-data.txt.gz` contains two datasets in the
 dataset collector format.
 
-##### 1. Generate upload request streams
+#### 1. Generate upload request streams
 The following command generates three upload request streams (uniform, normal,
 lognormal) for both datasets (media, enterprise):
 ```
@@ -230,7 +245,7 @@ After the command finishes, you should have 6 streams in the datasets folder:
 │   └── media-uniform-stream.bin.gz
 ```
 
-##### 2. Simulate different rate limits
+#### 2. Simulate different rate limits
 The following command takes all six upload request streams generated in the
 previous step and for all of them, simulates different rate limit combinations:
 ```
@@ -256,7 +271,7 @@ as documented above for the `--only-final` flag):
 ...
 ```
 
-##### 3. Simulate the protocol with different offline rates
+#### 3. Simulate the protocol with different offline rates
 The following command tests different offline rates for all 6 streams using
 fixed rate limits (for clarity they are explicitly passed to the command)
 ```
@@ -277,7 +292,7 @@ offline rates for all datasets and produces following output files:
 
 They have the same format as above.
 
-##### 4. Measure the evolution of DDP
+#### 4. Measure the evolution of DDP
 The following command measures the evolution of DDP during the simulation
 (notice that `--only-final` is not used here) with fixed rate limits and
 offline rate. The output files contain 10000 samples distributed evenly among
@@ -302,8 +317,64 @@ used to calculate the DDP (see above for column order).
 
 
 ## Perfect Protocol Simulator
-TODO
+The simulator for measuring perfect deduplication can be found from the file
+`simulator/simulator-perfect.py`. It reads an upload request stream from the
+standard input and outputs the storage status after each upload to standard
+output. The output format is the same as for the default simulator output
+format (see [Output Format](#output-format) above).
 
-## Links
-* Paper: https://eprint.iacr.org/2015/455.pdf
-* Demo Implementation: https://git.ssg.aalto.fi/close/cloud-dedup
+### Usage Examples
+```
+# Measure perfect deduplication percentage for the uniform home stream (note
+# that the distribution here has no effect on the results, only the original
+# dataset). Output is written as CSV to home-perfect.csv file.
+cat home-uniform-stream.bin | python3 ./simulator/simulator-perfect.py > home-perfect.csv
+
+# Same as above but only take constant number of samples from the results:
+cat home-uniform-stream.bin | python3 ./simulator/simulator-perfect.py | resamp -k 10000 | sort -n > home-perfect-samples.csv
+```
+
+## Oversampler
+The oversampler generates new (copies, size) samples from a given dataset using
+SMOTE algorithm. File hashes are chosen randomly from an uniform distribution.
+The `simulator/oversample.py` reads a dataset from stdin and writes new dataset
+to stdout. It supports the following options:
+* `--smote-amount` - (int) the amount of SMOTE to perform. Must be a multiple
+of 100 where the value 100 generates one output sample for each input sample,
+200 generates two samples for each input and so on.
+* `--neighbors` - (int) the number of nearest neighbors to use in SMOTE
+(default: 5).
+* `--hash-length` - (int) the length of the hashes to generate in bits
+(default: 160 i.e. SHA1)
+
+The output contains a new dataset in the familiar format of the dataset
+collector script:
+```
+<hex-encoded hash>  <count>  <size>
+```
+
+__Note__: The output only contains the new, generated samples.
+
+### Setup
+As mentioned earlier, this component has extra dependencies that were not
+installed by default since they require extra dependencies that cannot be
+installed with pip. The packages the oversampler requires are:
+* numpy
+* scipy
+* scikit-learn
+
+To install numpy and scipy, follow the
+[Installing the SciPy Stack](http://www.scipy.org/install.html) guide. Once
+those have been installed, you can install scikit-learn from pip:
+```
+pip install -U scikit-learn
+```
+
+### Usage Examples
+```
+# Generate new dataset from home-data.txt with 500% SMOTE:
+cat home-data.txt | python3 ./simulator/oversample.py --smote-amount 500 > home-synthetic-data.txt
+
+# Combine the two datasets (original + synthetic) into one large dataset:
+cat home-data.txt home-synthetic-data.txt > home-extended-data.txt
+```
